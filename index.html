@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trading Bot Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">AI Trading Bot Dashboard</h1>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h3>Fetch Market Data</h3>
+                <form id="fetch-data-form">
+                    <div class="form-group">
+                        <label for="symbol">Symbol</label>
+                        <input type="text" class="form-control" id="symbol" name="symbol" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="start_date">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end_date">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Fetch Data</button>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <h3>Execute Trade</h3>
+                <form id="trade-form">
+                    <div class="form-group">
+                        <label for="trade_symbol">Symbol</label>
+                        <input type="text" class="form-control" id="trade_symbol" name="symbol" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signal">Signal</label>
+                        <select class="form-control" id="signal" name="signal" required>
+                            <option value="1">Buy</option>
+                            <option value="-1">Sell</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="qty">Quantity</label>
+                        <input type="number" class="form-control" id="qty" name="qty" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Execute Trade</button>
+                </form>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h3>Live Trading Chart</h3>
+                <canvas id="tradingChart"></canvas>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h3>Order Status</h3>
+                <button id="check-orders" class="btn btn-primary">Check Order Status</button>
+                <ul id="order-status" class="list-group mt-3"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('fetch-data-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            fetch('/fetch_data', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const labels = Object.keys(data['Close']);
+                const closePrices = Object.values(data['Close']);
+                const ctx = document.getElementById('tradingChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Close Price',
+                            data: closePrices,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'day'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        });
+
+        document.getElementById('trade-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            fetch('/execute_trade', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.result);
+            });
+        });
+
+        document.getElementById('check-orders').addEventListener('click', function() {
+            fetch('/order_status')
+            .then(response => response.json())
+            .then(data => {
+                const orderStatusList = document.getElementById('order-status');
+                orderStatusList.innerHTML = '';
+                data.forEach(order => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item';
+                    listItem.textContent = `Order for ${order.symbol}: Status - ${order.status}, Quantity - ${order.quantity}`;
+                    orderStatusList.appendChild(listItem);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
